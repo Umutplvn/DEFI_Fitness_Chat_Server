@@ -5,6 +5,7 @@ const http = require('http');
 const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 
 // Setup express
 const app = express();
@@ -16,17 +17,39 @@ const io = socketIo(server, {
   }
 });
 
+// Ensure uploads directory exists
+const uploadDir = './uploads';
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
 // Setup multer for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, './uploads/');
+    cb(null, 'uploads/');
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 1024 * 1024 * 10 // 10 MB file size limit
+  },
+  fileFilter: (req, file, cb) => {
+    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv/;
+    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = fileTypes.test(file.mimetype);
+
+    if (extname && mimetype) {
+      return cb(null, true);
+    } else {
+      cb('Error: Images and Videos Only!');
+    }
+  }
+});
 
 app.use(cors({
   origin: 'http://localhost:3001',
@@ -59,12 +82,14 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
   try {
     const { senderId, receiverId, message } = req.body;
 
-    if (!receiverId) {
-      return res.status(400).send({ error: 'receiverId is required' });
+    if (!senderId || !receiverId || !message) {
+      return res.status(400).send({ error: 'senderId, receiverId, and message are required' });
     }
 
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
+
+    console.log('Files received:', { image, video });
 
     const newMessage = new Message({ senderId, receiverId, message, image, video });
     await newMessage.save();
@@ -74,57 +99,22 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
 
     res.send(newMessage);
   } catch (error) {
-    console.error('Failed to send message', error);
+    console.error('Failed to send message:', error);
     res.status(500).send({ error: 'Failed to send message' });
   }
 });
 
-// RECEIVE CHATS
-app.get('/api/chats/:userId', async (req, res) => {
+// Simple file upload test
+app.post('/api/upload', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), (req, res) => {
   try {
-    const { userId } = req.params;
-    if (!userId) {
-      return res.status(400).send({ error: 'User ID is required' });
-    }
+    const image = req.files['image'] ? req.files['image'][0].filename : null;
+    const video = req.files['video'] ? req.files['video'][0].filename : null;
 
-    const messages = await Message.find({
-      $or: [
-        { receiverId: userId },
-        { senderId: userId }
-      ]
-    }).sort({ timestamp: -1 });
-
-    const chats = messages.reduce((acc, message) => {
-      const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
-      if (!acc[otherUserId]) {
-        acc[otherUserId] = { ...message._doc, read: message.read };
-      } else {
-        acc[otherUserId] = message.timestamp > acc[otherUserId].timestamp ? message : acc[otherUserId];
-      }
-      return acc;
-    }, {});
-
-    res.send(Object.values(chats));
+    console.log('Files received:', { image, video });
+    res.send({ image, video });
   } catch (error) {
-    console.error('Failed to retrieve chats:', error);
-    res.status(500).send({ error: 'Failed to retrieve chats' });
-  }
-});
-
-// MARK MESSAGES AS READ
-app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
-  try {
-    const { userId, receiverId } = req.params;
-
-    await Message.updateMany(
-      { receiverId: userId, senderId: receiverId, read: false },
-      { $set: { read: true } }
-    );
-
-    res.send({ success: true });
-  } catch (error) {
-    console.error('Failed to mark messages as read:', error);
-    res.status(500).send({ error: 'Failed to mark messages as read' });
+    console.error('Failed to upload files:', error);
+    res.status(500).send({ error: 'Failed to upload files' });
   }
 });
 
