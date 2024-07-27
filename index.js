@@ -99,6 +99,7 @@ app.get('/api/chats/:userId', async (req, res) => {
   }
 });
 
+
 // MARK MESSAGES AS READ
 app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
   try {
