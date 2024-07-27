@@ -8,11 +8,11 @@ const fs = require('fs');
 const path = require('path');
 
 const app = express();
-const port = 8080;
+const port = process.env.PORT || 8080;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: '*',
+    origin: 'http://localhost:3000', // Frontend URL'nizi buraya ekleyin
     methods: ['GET', 'POST']
   }
 });
@@ -48,8 +48,8 @@ const upload = multer({ storage: storage });
 
 // Model oluşturma
 const MessageSchema = new mongoose.Schema({
-  senderId: String,   // Gönderen kullanıcının ID'si
-  receiverId: String, // Alıcı kullanıcının ID'si
+  senderId: String,
+  receiverId: String,
   message: String,
   image: String,
   timestamp: { type: Date, default: Date.now }
@@ -65,7 +65,6 @@ app.post('/api/messages', upload.single('image'), async (req, res) => {
   const newMessage = new Message({ senderId, receiverId, message, image });
   await newMessage.save();
 
-  // Yeni mesajı ilgili alıcıya göndermek için socket.io kullanabilirsiniz
   io.to(receiverId).emit('message', newMessage);
   io.to(senderId).emit('message', newMessage); // Gönderen kullanıcıya da gönder
 
