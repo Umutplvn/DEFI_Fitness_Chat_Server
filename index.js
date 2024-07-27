@@ -14,7 +14,22 @@ const io = socketIo(server, {
   }
 });
 
-const upload = multer({ dest: 'uploads/' });
+app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
+  console.log('Files:', req.files); // Dosyaları kontrol edin
+  console.log('Body:', req.body); // Body'yi kontrol edin
+  
+  const { senderId, receiverId, message } = req.body;
+  const image = req.files['image'] ? req.files['image'][0].filename : null;
+  const video = req.files['video'] ? req.files['video'][0].filename : null;
+
+  const newMessage = new Message({ senderId, receiverId, message, image, video });
+  await newMessage.save();
+
+  io.to(receiverId).emit('message', newMessage);
+  io.to(senderId).emit('message', newMessage);
+
+  res.send(newMessage);
+});
 
 app.use(cors());
 
