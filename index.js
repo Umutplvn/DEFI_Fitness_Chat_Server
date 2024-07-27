@@ -48,7 +48,8 @@ const upload = multer({ storage: storage });
 
 // Model oluşturma
 const MessageSchema = new mongoose.Schema({
-  userId: String,
+  senderId: String,   // Gönderen kullanıcının ID'si
+  receiverId: String, // Alıcı kullanıcının ID'si
   message: String,
   image: String,
   timestamp: { type: Date, default: Date.now }
@@ -58,26 +59,39 @@ const Message = mongoose.model('Message', MessageSchema);
 
 // Mesaj gönderme
 app.post('/api/messages', upload.single('image'), async (req, res) => {
-  const { userId, message } = req.body;
+  const { senderId, receiverId, message } = req.body;
   const image = req.file ? req.file.filename : null;
 
-  const newMessage = new Message({ userId, message, image });
+  const newMessage = new Message({ senderId, receiverId, message, image });
   await newMessage.save();
-  
-  // Yeni mesajı tüm bağlı istemcilere gönder
-  io.emit('message', newMessage);
-  
+
+  // Yeni mesajı ilgili alıcıya göndermek için socket.io kullanabilirsiniz
+  io.to(receiverId).emit('message', newMessage);
+  io.to(senderId).emit('message', newMessage); // Gönderen kullanıcıya da gönder
+
   res.send(newMessage);
 });
 
 // Mesajları getirme
-app.get('/api/messages', async (req, res) => {
-  const messages = await Message.find().sort({ timestamp: -1 });
+app.get('/api/messages/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const messages = await Message.find({
+    $or: [
+      { receiverId: userId },
+      { senderId: userId }
+    ]
+  }).sort({ timestamp: -1 });
   res.send(messages);
 });
 
 io.on('connection', (socket) => {
   console.log('a user connected');
+
+  socket.on('joinRoom', (userId) => {
+    socket.join(userId);
+    console.log(`User ${userId} joined`);
+  });
+
   socket.on('disconnect', () => {
     console.log('user disconnected');
   });
