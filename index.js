@@ -1,20 +1,18 @@
-"use strict";
-
-/* -------------------------------------------------------
-    EXPRESSJS - DEFI Project
-------------------------------------------------------- */
-
 const express = require('express');
 const mongoose = require('mongoose');
 const multer = require('multer');
 const http = require('http');
 const socketIo = require('socket.io');
+const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
 const upload = multer({ dest: 'uploads/' });
+
+// CORS yapılandırması
+app.use(cors());
 
 mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', { useNewUrlParser: true, useUnifiedTopology: true });
 
