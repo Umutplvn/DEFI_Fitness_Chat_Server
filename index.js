@@ -4,6 +4,8 @@ const multer = require('multer');
 const cors = require('cors');
 const http = require('http');
 const { Server } = require('socket.io');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const port = 8080;
@@ -17,7 +19,14 @@ const io = new Server(server, {
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static('uploads'));
+
+// Yükleme dizininin mevcudiyetini kontrol edin ve yoksa oluşturun
+const uploadDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir);
+}
+
+app.use('/uploads', express.static(uploadDir));
 
 // MongoDB bağlantısı
 mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', {
