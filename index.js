@@ -20,7 +20,7 @@ app.use(express.json());
 app.use(express.static('uploads'));
 
 // MongoDB bağlantısı
-mongoose.connect('mongodb://localhost:27017/chat-app', {
+mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 }).then(() => console.log('MongoDB connected'))
