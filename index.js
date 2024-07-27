@@ -16,7 +16,7 @@ const io = socketIo(server);
 
 const upload = multer({ dest: 'uploads/' });
 
-mongoose.connect('mongodb://localhost:27017/defi-chat', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', { useNewUrlParser: true, useUnifiedTopology: true });
 
 const MessageSchema = new mongoose.Schema({
   senderId: String,
