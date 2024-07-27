@@ -17,20 +17,24 @@ const io = socketIo(server, {
 });
 
 // Setup multer for file upload
-app.post('/upload', upload.single('file'), (req, res) => {
-  const file = req.file;
-  if (file) {
-    res.json({ url: `/uploads/${file.filename}` });
-  } else {
-    res.status(400).send('No file uploaded.');
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'uploads/');
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
   }
 });
 
+const upload = multer({ storage: storage });
 
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3001',
+  methods: ['GET', 'POST', 'PUT']
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('uploads', express.static('uploads')); // To serve static files
+app.use('/uploads', express.static('uploads')); // To serve static files
 
 mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', {
   useNewUrlParser: true,
@@ -53,23 +57,18 @@ const Message = mongoose.model('Message', MessageSchema);
 // SEND A MESSAGE
 app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
   try {
-    console.log('Files:', req.files); // Dosyaların doğru şekilde alındığını kontrol edin
-    console.log('Body:', req.body); // Body içeriğini kontrol edin
-
     const { senderId, receiverId, message } = req.body;
+
     if (!receiverId) {
       return res.status(400).send({ error: 'receiverId is required' });
     }
 
-    // Dosyaların adlarını almak için kontrol edin
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
 
-    // Yeni mesaj oluşturma
     const newMessage = new Message({ senderId, receiverId, message, image, video });
     await newMessage.save();
 
-    // Socket.IO ile mesajları gönderme
     io.to(receiverId).emit('message', newMessage);
     io.to(senderId).emit('message', newMessage);
 
@@ -80,12 +79,14 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
   }
 });
 
-
-
 // RECEIVE CHATS
 app.get('/api/chats/:userId', async (req, res) => {
   try {
     const { userId } = req.params;
+    if (!userId) {
+      return res.status(400).send({ error: 'User ID is required' });
+    }
+
     const messages = await Message.find({
       $or: [
         { receiverId: userId },
@@ -105,10 +106,10 @@ app.get('/api/chats/:userId', async (req, res) => {
 
     res.send(Object.values(chats));
   } catch (error) {
+    console.error('Failed to retrieve chats:', error);
     res.status(500).send({ error: 'Failed to retrieve chats' });
   }
 });
-
 
 // MARK MESSAGES AS READ
 app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
@@ -122,6 +123,7 @@ app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
 
     res.send({ success: true });
   } catch (error) {
+    console.error('Failed to mark messages as read:', error);
     res.status(500).send({ error: 'Failed to mark messages as read' });
   }
 });
@@ -129,10 +131,17 @@ app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
 // Socket.io connection
 io.on('connection', (socket) => {
   const userId = socket.handshake.query.userId;
-  socket.join(userId);
+
+  if (userId) {
+    socket.join(userId);
+    console.log(`User ${userId} connected`);
+  }
 
   socket.on('disconnect', () => {
-    socket.leave(userId);
+    if (userId) {
+      socket.leave(userId);
+      console.log(`User ${userId} disconnected`);
+    }
   });
 });
 
