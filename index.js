@@ -21,7 +21,7 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
   const image = req.files['image'] ? req.files['image'][0].filename : null;
   const video = req.files['video'] ? req.files['video'][0].filename : null;
 
-  const newMessage = new Message({ senderId, receiverId, message, image, video });
+  const newMessage = new Message({ senderId, receiverId, message, image, video, read });
   await newMessage.save();
 
   io.to(receiverId).emit('message', newMessage);
@@ -38,7 +38,7 @@ app.get('/api/chats/:userId', async (req, res) => {
       { receiverId: userId },
       { senderId: userId }
     ]
-  }).sort({ timestamp: -1 });
+  }).sort();
 
   // LAST MESSAGES
   const chats = messages.reduce((acc, message) => {
