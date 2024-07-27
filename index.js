@@ -7,11 +7,15 @@ const cors = require('cors');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT']
+  }
+});
 
 const upload = multer({ dest: 'uploads/' });
 
-// CORS yapılandırması
 app.use(cors());
 
 mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', { useNewUrlParser: true, useUnifiedTopology: true });
@@ -46,7 +50,7 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
   res.send(newMessage);
 });
 
-// RECEIVE MESSAGES AND ONLINE/OFFLINE INFO
+// RECEIVE CHATS
 app.get('/api/chats/:userId', async (req, res) => {
   const { userId } = req.params;
   const messages = await Message.find({
@@ -56,7 +60,6 @@ app.get('/api/chats/:userId', async (req, res) => {
     ]
   }).sort({ timestamp: -1 });
 
-  // LAST MESSAGES
   const chats = messages.reduce((acc, message) => {
     const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
     if (!acc[otherUserId]) {
