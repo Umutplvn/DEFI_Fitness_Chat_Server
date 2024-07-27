@@ -53,10 +53,14 @@ const Message = mongoose.model('Message', MessageSchema);
 // SEND A MESSAGE
 app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
   try {
-    console.log('Files:', req.files); // Debugging
-    console.log('Body:', req.body); // Debugging
+    console.log('Files:', req.files); // Dosyaların alındığını kontrol edin
+    console.log('Body:', req.body); // Body'yi kontrol edin
 
     const { senderId, receiverId, message } = req.body;
+    if (!receiverId) {
+      return res.status(400).send({ error: 'receiverId is required' });
+    }
+
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
 
@@ -68,9 +72,11 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
 
     res.send(newMessage);
   } catch (error) {
+    console.error('Failed to send message', error);
     res.status(500).send({ error: 'Failed to send message' });
   }
 });
+
 
 // RECEIVE CHATS
 app.get('/api/chats/:userId', async (req, res) => {
