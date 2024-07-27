@@ -12,7 +12,7 @@ const port = process.env.PORT || 8080;
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:3000', // Frontend URL'nizi buraya ekleyin
+    origin: 'http://localhost:3000', // Frontend URL
     methods: ['GET', 'POST']
   }
 });
@@ -20,7 +20,6 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
-// Yükleme dizininin mevcudiyetini kontrol edin ve yoksa oluşturun
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
@@ -35,7 +34,7 @@ mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.n
 }).then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
-// Multer ayarları (görsel dosyaların yüklenmesi için)
+// Multer settings for img
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/')
@@ -46,7 +45,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Model oluşturma
+// Message model 
 const MessageSchema = new mongoose.Schema({
   senderId: String,
   receiverId: String,
@@ -57,6 +56,9 @@ const MessageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', MessageSchema);
 
+// Çevrimiçi kullanıcılar yönetimi
+const onlineUsers = new Map(); // Map kullanarak userId ve socketId saklayacağız
+
 // Mesaj gönderme
 app.post('/api/messages', upload.single('image'), async (req, res) => {
   const { senderId, receiverId, message } = req.body;
@@ -66,12 +68,11 @@ app.post('/api/messages', upload.single('image'), async (req, res) => {
   await newMessage.save();
 
   io.to(receiverId).emit('message', newMessage);
-  io.to(senderId).emit('message', newMessage); // Gönderen kullanıcıya da gönder
+  io.to(senderId).emit('message', newMessage); 
 
   res.send(newMessage);
 });
 
-// Mesajları getirme
 app.get('/api/messages/:userId', async (req, res) => {
   const { userId } = req.params;
   const messages = await Message.find({
@@ -83,16 +84,31 @@ app.get('/api/messages/:userId', async (req, res) => {
   res.send(messages);
 });
 
+// Socket.io bağlantıları
 io.on('connection', (socket) => {
-  console.log('a user connected');
+  console.log('A user connected: ' + socket.id);
 
+  // Kullanıcı çevrimiçi oldu
   socket.on('joinRoom', (userId) => {
     socket.join(userId);
+    onlineUsers.set(userId, socket.id);
     console.log(`User ${userId} joined`);
+
+    // Çevrimiçi kullanıcıları güncelle
+    io.emit('updateOnlineStatus', Array.from(onlineUsers.keys()));
   });
 
+  // Kullanıcı çevrimdışı oldu
   socket.on('disconnect', () => {
-    console.log('user disconnected');
+    console.log('User disconnected: ' + socket.id);
+    // Kullanıcıyı çevrimiçi listeden çıkar
+    for (const [userId, socketId] of onlineUsers.entries()) {
+      if (socketId === socket.id) {
+        onlineUsers.delete(userId);
+        io.emit('updateOnlineStatus', Array.from(onlineUsers.keys()));
+        break;
+      }
+    }
   });
 });
 
