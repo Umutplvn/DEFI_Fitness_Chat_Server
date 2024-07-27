@@ -20,6 +20,7 @@ const io = new Server(server, {
 app.use(cors());
 app.use(express.json());
 
+// Upload dizinini oluştur
 const uploadDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
@@ -34,45 +35,48 @@ mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.n
 }).then(() => console.log('MongoDB connected'))
   .catch(err => console.log(err));
 
-// Multer settings for img
+// Multer ayarları (dosyaların yüklenmesi için)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/')
+    cb(null, 'uploads/');
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + '-' + file.originalname)
+    cb(null, Date.now() + '-' + file.originalname);
   }
 });
 const upload = multer({ storage: storage });
 
-// Message model 
+// Mesaj modelini tanımla
 const MessageSchema = new mongoose.Schema({
   senderId: String,
   receiverId: String,
   message: String,
   image: String,
+  video: String, // Video dosyası
+  read: { type: Boolean, default: false },
   timestamp: { type: Date, default: Date.now }
 });
 
 const Message = mongoose.model('Message', MessageSchema);
 
-// Çevrimiçi kullanıcılar yönetimi
+// Çevrimiçi kullanıcıları yönetme
 const onlineUsers = new Map(); // Map kullanarak userId ve socketId saklayacağız
 
 // Mesaj gönderme
-app.post('/api/messages', upload.single('image'), async (req, res) => {
+app.post('/api/messages', upload.single('video'), async (req, res) => {
   const { senderId, receiverId, message } = req.body;
-  const image = req.file ? req.file.filename : null;
+  const video = req.file && req.file.fieldname === 'video' ? req.file.filename : null;
 
-  const newMessage = new Message({ senderId, receiverId, message, image });
+  const newMessage = new Message({ senderId, receiverId, message, video });
   await newMessage.save();
 
   io.to(receiverId).emit('message', newMessage);
-  io.to(senderId).emit('message', newMessage); 
+  io.to(senderId).emit('message', newMessage);
 
   res.send(newMessage);
 });
 
+// Mesajları alma
 app.get('/api/messages/:userId', async (req, res) => {
   const { userId } = req.params;
   const messages = await Message.find({
@@ -82,6 +86,18 @@ app.get('/api/messages/:userId', async (req, res) => {
     ]
   }).sort({ timestamp: -1 });
   res.send(messages);
+});
+
+// Mesajların okunma durumunu güncelleme
+app.post('/api/messages/read/:senderId/:receiverId', async (req, res) => {
+  const { senderId, receiverId } = req.params;
+  
+  await Message.updateMany(
+    { senderId, receiverId, read: false },
+    { $set: { read: true } }
+  );
+
+  res.sendStatus(200);
 });
 
 // Socket.io bağlantıları
