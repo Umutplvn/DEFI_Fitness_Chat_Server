@@ -134,12 +134,12 @@ app.get('/api/chats/:userId', async (req, res) => {
 
     // Group messages by the other user in the chat
     const chats = messages.reduce((acc, message) => {
-      const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
+      const otherUserId = message.senderId == userId ? message.receiverId : message.senderId;
       if (!acc[otherUserId]) {
         acc[otherUserId] = { messages: [], unreadCount: 0 };
       }
       acc[otherUserId].messages.push(message);
-      if (!message.read && message.receiverId === userId) {
+      if (!message.read && message.receiverId == userId) {
         acc[otherUserId].unreadCount += 1;
       }
       return acc;
