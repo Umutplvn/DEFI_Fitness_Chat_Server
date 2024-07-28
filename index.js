@@ -205,6 +205,25 @@ app.get('/api/messages/:userId', async (req, res) => {
   }
 });
 
+// DELETE MESSAGES BETWEEN TWO USERS
+app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
+  try {
+    const { userId, receiverId } = req.params;
+
+    await Message.deleteMany({
+      $or: [
+        { senderId: userId, receiverId: receiverId },
+        { senderId: receiverId, receiverId: userId }
+      ]
+    });
+
+    res.send({ message: 'Messages deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete messages:', error);
+    res.status(500).send({ error: 'Failed to delete messages' });
+  }
+});
+
 // Socket.io connection
 io.on('connection', (socket) => {
   const userId = socket.handshake.query.userId;
