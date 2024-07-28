@@ -122,7 +122,7 @@ app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
   }
 });
 
-// GET CHATS FOR A SPECIFIC USER
+//! GET CHATS FOR A SPECIFIC USER
 app.get('/api/chats/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -151,6 +151,7 @@ app.get('/api/chats/:userId', async (req, res) => {
     res.status(500).send({ error: 'Failed to fetch chats' });
   }
 });
+
 
 // Simple file upload test
 app.post('/api/upload', (req, res) => {
