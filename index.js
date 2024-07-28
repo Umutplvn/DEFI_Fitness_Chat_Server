@@ -82,10 +82,6 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
   try {
     const { senderId, receiverId, message } = req.body;
 
-    // if (!senderId || !receiverId || !message) {
-    //   return res.status(400).send({ error: 'senderId, receiverId, and message are required' });
-    // }
-
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
 
@@ -104,6 +100,20 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
   }
 });
 
+// Simple file upload test
+app.post('/api/upload', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), (req, res) => {
+  try {
+    const image = req.files['image'] ? req.files['image'][0].filename : null;
+    const video = req.files['video'] ? req.files['video'][0].filename : null;
+
+    console.log('Files received:', { image, video });
+    res.send({ image, video });
+  } catch (error) {
+    console.error('Failed to upload files:', error);
+    res.status(500).send({ error: 'Failed to upload files' });
+  }
+});
+
 // GET MESSAGES FOR A SPECIFIC USER
 app.get('/api/messages/:userId', async (req, res) => {
   try {
@@ -118,20 +128,6 @@ app.get('/api/messages/:userId', async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch messages:', error);
     res.status(500).send({ error: 'Failed to fetch messages' });
-  }
-});
-
-// Simple file upload test
-app.post('/api/upload', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), (req, res) => {
-  try {
-    const image = req.files['image'] ? req.files['image'][0].filename : null;
-    const video = req.files['video'] ? req.files['video'][0].filename : null;
-
-    console.log('Files received:', { image, video });
-    res.send({ image, video });
-  } catch (error) {
-    console.error('Failed to upload files:', error);
-    res.status(500).send({ error: 'Failed to upload files' });
   }
 });
 
