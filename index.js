@@ -26,7 +26,7 @@ if (!fs.existsSync(uploadDir)) {
 // Setup multer for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, './uploads');
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -36,20 +36,20 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 1024 * 1024 * 50
+    fileSize: 1024 * 1024 * 50 // 50MB
   },
   fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv/;
-    const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = fileTypes.test(file.mimetype);
+    const allowedTypes = /jpeg|jpg|png|gif|mp4|avi|mkv|pdf|doc|docx/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
 
     if (extname && mimetype) {
       return cb(null, true);
     } else {
-      cb('Error: Images and Videos Only!');
+      cb('Error: Files Only!');
     }
   }
-}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
+}).fields([{ name: 'file', maxCount: 1 }]);
 
 app.use(cors({
   origin: 'http://localhost:3000',
@@ -57,9 +57,10 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static('uploads'));
+app.use('/uploads', express.static(uploadDir));
 
-mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', {
+// MongoDB connection
+mongoose.connect('mongodb+srv://username:password@cluster0.mongodb.net/defi', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
@@ -69,15 +70,14 @@ const MessageSchema = new mongoose.Schema({
   senderId: String,
   receiverId: String,
   message: String,
-  image: String,
-  video: String,
+  file: String,
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false }
 });
 
 const Message = mongoose.model('Message', MessageSchema);
 
-// SEND A MESSAGE
+// Routes
 app.post('/api/messages', (req, res) => {
   upload(req, res, async function (err) {
     if (err instanceof multer.MulterError) {
@@ -87,10 +87,9 @@ app.post('/api/messages', (req, res) => {
     }
     try {
       const { senderId, receiverId, message } = req.body;
-      const image = req.files['image'] ? req.files['image'][0].filename : null;
-      const video = req.files['video'] ? req.files['video'][0].filename : null;
+      const file = req.files['file'] ? req.files['file'][0].filename : null;
       
-      const newMessage = new Message({ senderId, receiverId, message, image, video });
+      const newMessage = new Message({ senderId, receiverId, message, file });
       await newMessage.save();
 
       io.to(receiverId).emit('message', newMessage);
@@ -104,12 +103,10 @@ app.post('/api/messages', (req, res) => {
   });
 });
 
-// Mark messages as read between a user and a receiver
 app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
   try {
     const { userId, receiverId } = req.params;
     
-    // Update messages where the user is the receiver and the messages are unread
     await Message.updateMany(
       { senderId: receiverId, receiverId: userId, read: false },
       { $set: { read: true } }
@@ -122,24 +119,21 @@ app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
   }
 });
 
-// GET CHATS FOR A SPECIFIC USER
 app.get('/api/chats/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
 
-    // Fetch messages where the user is either the sender or the receiver
     const messages = await Message.find({
       $or: [{ senderId: userId }, { receiverId: userId }]
     }).sort({ timestamp: -1 });
 
-    // Group messages by the other user in the chat
     const chats = messages.reduce((acc, message) => {
-      const otherUserId = message.senderId == userId ? message.receiverId : message.senderId;
+      const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
       if (!acc[otherUserId]) {
         acc[otherUserId] = { messages: [], unreadCount: 0 };
       }
       acc[otherUserId].messages.push(message);
-      if (!message.read && message.receiverId == userId) {
+      if (!message.read && message.receiverId === userId) {
         acc[otherUserId].unreadCount += 1;
       }
       return acc;
@@ -152,12 +146,10 @@ app.get('/api/chats/:userId', async (req, res) => {
   }
 });
 
-// GET MESSAGES FOR A SPECIFIC USER
 app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
   try {
     const { userId, otherUserId } = req.params;
 
-    // Fetch messages between the two users
     const messages = await Message.find({
       $or: [
         { senderId: userId, receiverId: otherUserId },
@@ -167,45 +159,11 @@ app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
 
     res.send(messages);
   } catch (error) {
-    console.error('Failed to fetch chats:', error);
-    res.status(500).send({ error: 'Failed to fetch chats' });
-  }
-});
-
-// Simple file upload test
-app.post('/api/upload', (req, res) => {
-  upload(req, res, function (err) {
-    if (err instanceof multer.MulterError) {
-      return res.status(400).json({ error: err.message });
-    } else if (err) {
-      return res.status(500).json({ error: err.message });
-    }
-    const image = req.files['image'] ? req.files['image'][0].filename : null;
-    const video = req.files['video'] ? req.files['video'][0].filename : null;
-
-    console.log('Files received:', { image, video });
-    res.send({ image, video });
-  });
-});
-
-// GET MESSAGES FOR A SPECIFIC USER
-app.get('/api/messages/:userId', async (req, res) => {
-  try {
-    const userId = req.params.userId;
-
-    // Fetch messages where the user is either the sender or the receiver
-    const messages = await Message.find({
-      $or: [{ senderId: userId }, { receiverId: userId }]
-    }).sort({ timestamp: 1 }); // Sort messages by timestamp in descending order
-
-    res.send(messages);
-  } catch (error) {
     console.error('Failed to fetch messages:', error);
     res.status(500).send({ error: 'Failed to fetch messages' });
   }
 });
 
-// DELETE MESSAGES BETWEEN TWO USERS
 app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
   try {
     const { userId, receiverId } = req.params;
@@ -240,14 +198,12 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Handle file uploads via Socket.IO
   socket.on('fileUpload', async (file) => {
     try {
       const buffer = Buffer.from(file.data);
       const filePath = path.join(uploadDir, file.name);
       fs.writeFileSync(filePath, buffer);
 
-      // Notify the receiver about the new file
       socket.broadcast.to(file.receiverId).emit('fileUploaded', { filePath, fileName: file.name });
     } catch (error) {
       console.error('Error saving file:', error);
