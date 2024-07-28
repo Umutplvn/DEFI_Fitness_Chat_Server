@@ -152,6 +152,25 @@ app.get('/api/chats/:userId', async (req, res) => {
   }
 });
 
+//! GET MESSAGES FOR A SPECIFIC USER
+app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
+  try {
+    const { userId, otherUserId } = req.params;
+
+    // Fetch messages between the two users
+    const messages = await Message.find({
+      $or: [
+        { senderId: userId, receiverId: otherUserId },
+        { senderId: otherUserId, receiverId: userId }
+      ]
+    }).sort();
+
+    res.send(messages);
+  } catch (error) {
+    console.error('Failed to fetch chats:', error);
+    res.status(500).send({ error: 'Failed to fetch chats' });
+  }
+});
 
 // Simple file upload test
 app.post('/api/upload', (req, res) => {
