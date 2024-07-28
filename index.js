@@ -26,7 +26,7 @@ if (!fs.existsSync(uploadDir)) {
 // Setup multer for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, 'uploads/');
+    cb(null, './uploads');
   },
   filename: (req, file, cb) => {
     cb(null, Date.now() + path.extname(file.originalname));
@@ -57,7 +57,7 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use('/uploads', express.static('uploads')); // To serve static files
+app.use('/uploads', express.static('uploads'));
 
 mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', {
   useNewUrlParser: true,
@@ -101,6 +101,23 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
   } catch (error) {
     console.error('Failed to send message:', error);
     res.status(500).send({ error: 'Failed to send message' });
+  }
+});
+
+// GET MESSAGES FOR A SPECIFIC USER
+app.get('/api/messages/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Fetch messages where the user is either the sender or the receiver
+    const messages = await Message.find({
+      $or: [{ senderId: userId }, { receiverId: userId }]
+    }).sort({ timestamp: -1 }); // Sort messages by timestamp in descending order
+
+    res.send(messages);
+  } catch (error) {
+    console.error('Failed to fetch messages:', error);
+    res.status(500).send({ error: 'Failed to fetch messages' });
   }
 });
 
