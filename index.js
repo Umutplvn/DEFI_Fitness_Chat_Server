@@ -52,7 +52,7 @@ const upload = multer({
 }).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
 
 app.use(cors({
-  origin: 'http://localhost:3001',
+  origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT']
 }));
 app.use(express.json());
