@@ -82,9 +82,9 @@ app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name:
   try {
     const { senderId, receiverId, message } = req.body;
 
-    if (!senderId || !receiverId || !message) {
-      return res.status(400).send({ error: 'senderId, receiverId, and message are required' });
-    }
+    // if (!senderId || !receiverId || !message) {
+    //   return res.status(400).send({ error: 'senderId, receiverId, and message are required' });
+    // }
 
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
