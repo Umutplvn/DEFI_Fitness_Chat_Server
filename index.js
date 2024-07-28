@@ -163,7 +163,7 @@ app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
         { senderId: userId, receiverId: otherUserId },
         { senderId: otherUserId, receiverId: userId }
       ]
-    }).sort();
+    }).sort({ timestamp: 1 });
 
     res.send(messages);
   } catch (error) {
@@ -196,7 +196,7 @@ app.get('/api/messages/:userId', async (req, res) => {
     // Fetch messages where the user is either the sender or the receiver
     const messages = await Message.find({
       $or: [{ senderId: userId }, { receiverId: userId }]
-    }).sort({ timestamp: -1 }); // Sort messages by timestamp in descending order
+    }).sort({ timestamp: 1 }); // Sort messages by timestamp in descending order
 
     res.send(messages);
   } catch (error) {
