@@ -241,3 +241,22 @@ io.on('connection', (socket) => {
   });
 
   // Handle file uploads via Socket.IO
+  socket.on('fileUpload', async (file) => {
+    try {
+      const buffer = Buffer.from(file.data);
+      const filePath = path.join(uploadDir, file.name);
+      fs.writeFileSync(filePath, buffer);
+
+      // Notify the receiver about the new file
+      socket.broadcast.to(file.receiverId).emit('fileUploaded', { filePath, fileName: file.name });
+    } catch (error) {
+      console.error('Error saving file:', error);
+    }
+  });
+});
+
+// Start the server
+const PORT = process.env.PORT || 5000;
+server.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
