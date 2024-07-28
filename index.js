@@ -49,7 +49,7 @@ const upload = multer({
       cb('Error: Images and Videos Only!');
     }
   }
-});
+}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
 
 app.use(cors({
   origin: 'http://localhost:3001',
@@ -78,26 +78,76 @@ const MessageSchema = new mongoose.Schema({
 const Message = mongoose.model('Message', MessageSchema);
 
 // SEND A MESSAGE
-app.post('/api/messages', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), async (req, res) => {
-  try {
-    const { senderId, receiverId, message } = req.body;
+app.post('/api/messages', (req, res) => {
+  upload(req, res, async function (err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: err.message });
+    } else if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    try {
+      const { senderId, receiverId, message } = req.body;
+      const image = req.files['image'] ? req.files['image'][0].filename : null;
+      const video = req.files['video'] ? req.files['video'][0].filename : null;
+      
+      const newMessage = new Message({ senderId, receiverId, message, image, video });
+      await newMessage.save();
 
+      io.to(receiverId).emit('message', newMessage);
+      io.to(senderId).emit('message', newMessage);
+
+      res.send(newMessage);
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      res.status(500).send({ error: 'Failed to send message' });
+    }
+  });
+});
+
+// GET CHATS FOR A SPECIFIC USER
+app.get('/api/chats/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    // Fetch messages where the user is either the sender or the receiver
+    const messages = await Message.find({
+      $or: [{ senderId: userId }, { receiverId: userId }]
+    }).sort({ timestamp: -1 });
+
+    // Group messages by the other user in the chat
+    const chats = messages.reduce((acc, message) => {
+      const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
+      if (!acc[otherUserId]) {
+        acc[otherUserId] = { messages: [], unreadCount: 0 };
+      }
+      acc[otherUserId].messages.push(message);
+      if (!message.read && message.receiverId === userId) {
+        acc[otherUserId].unreadCount += 1;
+      }
+      return acc;
+    }, {});
+
+    res.send(chats);
+  } catch (error) {
+    console.error('Failed to fetch chats:', error);
+    res.status(500).send({ error: 'Failed to fetch chats' });
+  }
+});
+
+// Simple file upload test
+app.post('/api/upload', (req, res) => {
+  upload(req, res, function (err) {
+    if (err instanceof multer.MulterError) {
+      return res.status(400).json({ error: err.message });
+    } else if (err) {
+      return res.status(500).json({ error: err.message });
+    }
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
 
     console.log('Files received:', { image, video });
-
-    const newMessage = new Message({ senderId, receiverId, message, image, video });
-    await newMessage.save();
-
-    io.to(receiverId).emit('message', newMessage);
-    io.to(senderId).emit('message', newMessage);
-
-    res.send(newMessage);
-  } catch (error) {
-    console.error('Failed to send message:', error);
-    res.status(500).send({ error: 'Failed to send message' });
-  }
+    res.send({ image, video });
+  });
 });
 
 // GET MESSAGES FOR A SPECIFIC USER
@@ -114,20 +164,6 @@ app.get('/api/messages/:userId', async (req, res) => {
   } catch (error) {
     console.error('Failed to fetch messages:', error);
     res.status(500).send({ error: 'Failed to fetch messages' });
-  }
-});
-
-// Simple file upload test
-app.post('/api/upload', upload.fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]), (req, res) => {
-  try {
-    const image = req.files['image'] ? req.files['image'][0].filename : null;
-    const video = req.files['video'] ? req.files['video'][0].filename : null;
-
-    console.log('Files received:', { image, video });
-    res.send({ image, video });
-  } catch (error) {
-    console.error('Failed to upload files:', error);
-    res.status(500).send({ error: 'Failed to upload files' });
   }
 });
 
