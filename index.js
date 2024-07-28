@@ -123,19 +123,16 @@ app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
 });
 
 // GET CHATS FOR A SPECIFIC USER
-app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
+app.get('/api/chats/:userId', async (req, res) => {
   try {
-    const { userId, otherUserId } = req.params;
+    const userId = req.params.userId;
 
-    // Fetch messages between the two users
+    // Fetch messages where the user is either the sender or the receiver
     const messages = await Message.find({
-      $or: [
-        { senderId: userId, receiverId: otherUserId },
-        { senderId: otherUserId, receiverId: userId }
-      ]
+      $or: [{ senderId: userId }, { receiverId: userId }]
     }).sort({ timestamp: -1 });
 
-    // Group messages by the other user in the chat and calculate unread count
+    // Group messages by the other user in the chat
     const chats = messages.reduce((acc, message) => {
       const otherUserId = message.senderId === userId ? message.receiverId : message.senderId;
       if (!acc[otherUserId]) {
@@ -154,7 +151,6 @@ app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
     res.status(500).send({ error: 'Failed to fetch chats' });
   }
 });
-
 
 // Simple file upload test
 app.post('/api/upload', (req, res) => {
