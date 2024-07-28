@@ -104,6 +104,24 @@ app.post('/api/messages', (req, res) => {
   });
 });
 
+// Mark messages as read between a user and a receiver
+app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
+  try {
+    const { userId, receiverId } = req.params;
+    
+    // Update messages where the user is the receiver and the messages are unread
+    await Message.updateMany(
+      { senderId: receiverId, receiverId: userId, read: false },
+      { $set: { read: true } }
+    );
+
+    res.send({ message: 'Messages marked as read' });
+  } catch (error) {
+    console.error('Failed to mark messages as read:', error);
+    res.status(500).send({ error: 'Failed to mark messages as read' });
+  }
+});
+
 // GET CHATS FOR A SPECIFIC USER
 app.get('/api/chats/:userId', async (req, res) => {
   try {
