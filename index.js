@@ -122,7 +122,7 @@ app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
   }
 });
 
-//! GET CHATS FOR A SPECIFIC USER
+// GET CHATS FOR A SPECIFIC USER
 app.get('/api/chats/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -152,7 +152,7 @@ app.get('/api/chats/:userId', async (req, res) => {
   }
 });
 
-//! GET MESSAGES FOR A SPECIFIC USER
+// GET MESSAGES FOR A SPECIFIC USER
 app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
   try {
     const { userId, otherUserId } = req.params;
@@ -239,9 +239,5 @@ io.on('connection', (socket) => {
       console.log(`User ${userId} disconnected`);
     }
   });
-});
 
-// Start server
-server.listen(3000, () => {
-  console.log('Server is running on port 3000');
-});
+  // Handle file uploads via Socket.IO
