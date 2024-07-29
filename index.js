@@ -39,17 +39,21 @@ const upload = multer({
     fileSize: 1024 * 1024 * 50
   },
   fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv/;
+    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv|doc|docx|pdf/;
     const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = fileTypes.test(file.mimetype);
 
     if (extname && mimetype) {
       return cb(null, true);
     } else {
-      cb('Error: Images and Videos Only!');
+      cb('Error: Images, Videos, and Documents Only!');
     }
   }
-}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
+}).fields([
+  { name: 'image', maxCount: 1 },
+  { name: 'video', maxCount: 1 },
+  { name: 'document', maxCount: 1 }
+]);
 
 app.use(cors({
   origin: 'http://localhost:3000',
@@ -71,6 +75,7 @@ const MessageSchema = new mongoose.Schema({
   message: String,
   image: String,
   video: String,
+  document: String,
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false }
 });
@@ -89,8 +94,9 @@ app.post('/api/messages', (req, res) => {
       const { senderId, receiverId, message } = req.body;
       const image = req.files['image'] ? req.files['image'][0].filename : null;
       const video = req.files['video'] ? req.files['video'][0].filename : null;
-      
-      const newMessage = new Message({ senderId, receiverId, message, image, video });
+      const document = req.files['document'] ? req.files['document'][0].filename : null;
+
+      const newMessage = new Message({ senderId, receiverId, message, image, video, document });
       await newMessage.save();
 
       io.to(receiverId).emit('message', newMessage);
@@ -182,9 +188,10 @@ app.post('/api/upload', (req, res) => {
     }
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
+    const document = req.files['document'] ? req.files['document'][0].filename : null;
 
-    console.log('Files received:', { image, video });
-    res.send({ image, video });
+    console.log('Files received:', { image, video, document });
+    res.send({ image, video, document });
   });
 });
 
