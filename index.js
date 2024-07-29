@@ -122,6 +122,28 @@ app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
   }
 });
 
+//! DELETE A MESSAGE
+app.delete('/api/messages/delete/:messageId', async (req, res) => {
+  try {
+    const { messageId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(messageId)) {
+      return res.status(400).send({ error: 'Invalid message ID' });
+    }
+
+    const result = await Message.deleteOne({ _id: messageId });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).send({ message: 'Message not found' });
+    }
+
+    res.send({ message: 'Message deleted successfully' });
+  } catch (error) {
+    console.error('Failed to delete message:', error);
+    res.status(500).send({ error: 'Failed to delete message' });
+  }
+});
+
 //! GET CHATS FOR A SPECIFIC USER
 app.get('/api/chats/:userId', async (req, res) => {
   try {
