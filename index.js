@@ -39,21 +39,17 @@ const upload = multer({
     fileSize: 1024 * 1024 * 50
   },
   fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv|doc|docx|pdf/;
+    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv/;
     const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = fileTypes.test(file.mimetype);
 
     if (extname && mimetype) {
       return cb(null, true);
     } else {
-      cb('Error: Images, Videos, and Documents Only!');
+      cb('Error: Images and Videos Only!');
     }
   }
-}).fields([
-  { name: 'image', maxCount: 1 },
-  { name: 'video', maxCount: 1 },
-  { name: 'document', maxCount: 1 }
-]);
+}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
 
 app.use(cors({
   origin: 'http://localhost:3000',
@@ -75,7 +71,6 @@ const MessageSchema = new mongoose.Schema({
   message: String,
   image: String,
   video: String,
-  document: String,
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false }
 });
@@ -94,9 +89,8 @@ app.post('/api/messages', (req, res) => {
       const { senderId, receiverId, message } = req.body;
       const image = req.files['image'] ? req.files['image'][0].filename : null;
       const video = req.files['video'] ? req.files['video'][0].filename : null;
-      const document = req.files['document'] ? req.files['document'][0].filename : null;
-
-      const newMessage = new Message({ senderId, receiverId, message, image, video, document });
+      
+      const newMessage = new Message({ senderId, receiverId, message, image, video });
       await newMessage.save();
 
       io.to(receiverId).emit('message', newMessage);
@@ -128,7 +122,7 @@ app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
   }
 });
 
-// GET CHATS FOR A SPECIFIC USER
+//! GET CHATS FOR A SPECIFIC USER
 app.get('/api/chats/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -158,7 +152,7 @@ app.get('/api/chats/:userId', async (req, res) => {
   }
 });
 
-// GET MESSAGES FOR A SPECIFIC USER
+//! GET MESSAGES FOR A SPECIFIC USER
 app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
   try {
     const { userId, otherUserId } = req.params;
@@ -188,10 +182,9 @@ app.post('/api/upload', (req, res) => {
     }
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
-    const document = req.files['document'] ? req.files['document'][0].filename : null;
 
-    console.log('Files received:', { image, video, document });
-    res.send({ image, video, document });
+    console.log('Files received:', { image, video });
+    res.send({ image, video });
   });
 });
 
@@ -246,24 +239,9 @@ io.on('connection', (socket) => {
       console.log(`User ${userId} disconnected`);
     }
   });
-
-  // Handle file uploads via Socket.IO
-  socket.on('fileUpload', async (file) => {
-    try {
-      const buffer = Buffer.from(file.data);
-      const filePath = path.join(uploadDir, file.name);
-      fs.writeFileSync(filePath, buffer);
-
-      // Notify the receiver about the new file
-      socket.broadcast.to(file.receiverId).emit('fileUploaded', { filePath, fileName: file.name });
-    } catch (error) {
-      console.error('Error saving file:', error);
-    }
-  });
 });
 
-// Start the server
-const PORT = process.env.PORT || 5000;
-server.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Start server
+server.listen(3000, () => {
+  console.log('Server is running on port 3000');
 });
