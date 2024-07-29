@@ -60,7 +60,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(uploadDir));
 
 // MongoDB connection
-mongoose.connect('mongodb+srv://username:password@cluster0.mongodb.net/defi', {
+mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
