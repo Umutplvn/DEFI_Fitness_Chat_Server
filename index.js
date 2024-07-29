@@ -49,7 +49,7 @@ const upload = multer({
       cb('Error: Files Only!');
     }
   }
-}).fields([{ name: 'file', maxCount: 1 }]);
+}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
 
 app.use(cors({
   origin: 'http://localhost:3000',
@@ -70,7 +70,8 @@ const MessageSchema = new mongoose.Schema({
   senderId: String,
   receiverId: String,
   message: String,
-  file: String,
+  image: String,
+  video: String,
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false }
 });
@@ -87,9 +88,10 @@ app.post('/api/messages', (req, res) => {
     }
     try {
       const { senderId, receiverId, message } = req.body;
-      const file = req.files['file'] ? req.files['file'][0].filename : null;
-      
-      const newMessage = new Message({ senderId, receiverId, message, file });
+      const image = req.files['image'] ? req.files['image'][0].filename : null;
+      const video = req.files['video'] ? req.files['video'][0].filename : null;
+
+      const newMessage = new Message({ senderId, receiverId, message, image, video });
       await newMessage.save();
 
       io.to(receiverId).emit('message', newMessage);
