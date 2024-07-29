@@ -46,7 +46,7 @@ const upload = multer({
       cb('Error: Files Only!');
     }
   }
-}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }, { name: 'file', maxCount: 1 }]);
+}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }, { name: 'file', maxCount: 1 }, { name: 'pdf', maxCount: 1 }, { name: 'word', maxCount: 1 }]);
 
 app.use(cors({
   origin: 'http://localhost:3000',
