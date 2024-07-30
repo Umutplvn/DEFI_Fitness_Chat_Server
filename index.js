@@ -9,9 +9,8 @@ const fs = require('fs');
 const cron = require('node-cron'); 
 require('dotenv').config();
 const MONGODB = process.env.MONGODB
-const ADMINID=process.env.ADMINID
-console.log(MONGODB);
-// Setup express
+
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -21,13 +20,14 @@ const io = socketIo(server, {
   }
 });
 
-// Ensure uploads directory exists
+
+//! Uploads directory
 const uploadDir = './uploads';
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir);
 }
 
-// Setup multer for file upload
+//! Setup multer for file upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, './uploads');
@@ -55,6 +55,7 @@ const upload = multer({
   }
 }).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
 
+//! CORS
 app.use(cors({
   origin: 'http://localhost:3000',
   methods: ['GET', 'POST', 'PUT', 'DELETE']
@@ -68,7 +69,7 @@ mongoose.connect(`${MONGODB}`, {
   useUnifiedTopology: true
 });
 
-// Define the Message schema
+//! Message schema
 const MessageSchema = new mongoose.Schema({
   senderId: String,
   receiverId: String,
@@ -81,7 +82,7 @@ const MessageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', MessageSchema);
 
-// SEND A MESSAGE
+//! SEND A MESSAGE
 app.post('/api/messages', (req, res) => {
   upload(req, res, async function (err) {
     if (err instanceof multer.MulterError) {
@@ -108,7 +109,7 @@ app.post('/api/messages', (req, res) => {
   });
 });
 
-// Mark messages as read between a user and a receiver
+//! Mark messages as read between a user and a receiver
 app.put('/api/messages/read/:userId/:receiverId', async (req, res) => {
   try {
     const { userId, receiverId } = req.params;
@@ -153,12 +154,10 @@ app.get('/api/chats/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
 
-    // Fetch messages where the user is either the sender or the receiver
     const messages = await Message.find({
       $or: [{ senderId: userId }, { receiverId: userId }]
     }).sort({ timestamp: -1 });
 
-    // Group messages by the other user in the chat
     const chats = messages.reduce((acc, message) => {
       const otherUserId = message.senderId == userId ? message.receiverId : message.senderId;
       if (!acc[otherUserId]) {
@@ -183,7 +182,6 @@ app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
   try {
     const { userId, otherUserId } = req.params;
 
-    // Fetch messages between the two users
     const messages = await Message.find({
       $or: [
         { senderId: userId, receiverId: otherUserId },
@@ -219,10 +217,9 @@ app.get('/api/messages/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
 
-    // Fetch messages where the user is either the sender or the receiver
     const messages = await Message.find({
       $or: [{ senderId: userId }, { receiverId: userId }]
-    }).sort({ timestamp: 1 }); // Sort messages by timestamp in descending order
+    }).sort({ timestamp: 1 });
 
     res.send(messages);
   } catch (error) {
@@ -266,7 +263,7 @@ cron.schedule('0 0 * * *', async () => {
 });
 
 
-// Socket.io connection
+//! Socket.io connection
 io.on('connection', (socket) => {
   const userId = socket.handshake.query.userId;
 
@@ -283,7 +280,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start server
+//! Start server
 server.listen(3000, () => {
   console.log('Server is running on port 3000');
 });
