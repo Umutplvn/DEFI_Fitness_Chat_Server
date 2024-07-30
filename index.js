@@ -251,15 +251,15 @@ app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
 });
 
 //! Cron job to delete messages older than 2 minutes
-cron.schedule('*/2 * * * *', async () => {
+cron.schedule('0 0 * * *', async () => {
   try {
-    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     
     await Message.deleteMany({
-      timestamp: { $lt: twoMinutesAgo }
+      timestamp: { $lt: sevenDaysAgo }
     });
 
-    console.log('Messages older than 2 minutes deleted successfully.');
+    console.log('Messages older than 7 days deleted successfully.');
   } catch (error) {
     console.error('Failed to delete old messages:', error);
   }
