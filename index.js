@@ -10,7 +10,11 @@ const cron = require('node-cron');
 require('dotenv').config();
 const MONGODB = process.env.MONGODB
 
+
 const app = express();
+app.use((express.json()))
+app.use((static('./uploads')))
+
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
@@ -18,6 +22,7 @@ const io = socketIo(server, {
     methods: ['GET', 'POST', 'PUT', 'DELETE']
   }
 });
+
 
 //! Uploads directory
 const uploadDir = './uploads';
@@ -38,20 +43,20 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 1024 * 1024 * 50 // 50 MB
+    fileSize: 1024 * 1024 * 50
   },
   fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv|pdf|doc|docx/;
+    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv/;
     const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = fileTypes.test(file.mimetype);
 
     if (extname && mimetype) {
       return cb(null, true);
     } else {
-      cb('Error: Images, Videos, PDFs, and Word Documents Only!');
+      cb('Error: Images and Videos Only!');
     }
   }
-}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }, { name: 'document', maxCount: 1 }]);
+}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
 
 //! CORS
 app.use(cors({
@@ -74,7 +79,6 @@ const MessageSchema = new mongoose.Schema({
   message: String,
   image: String,
   video: String,
-  document: String,
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false }
 });
@@ -93,9 +97,8 @@ app.post('/api/messages', (req, res) => {
       const { senderId, receiverId, message } = req.body;
       const image = req.files['image'] ? req.files['image'][0].filename : null;
       const video = req.files['video'] ? req.files['video'][0].filename : null;
-      const document = req.files['document'] ? req.files['document'][0].filename : null;
       
-      const newMessage = new Message({ senderId, receiverId, message, image, video, document });
+      const newMessage = new Message({ senderId, receiverId, message, image, video });
       await newMessage.save();
 
       io.to(receiverId).emit('message', newMessage);
@@ -196,7 +199,7 @@ app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
   }
 });
 
-//! POST FILES (including PDFs and Word documents)
+//! Simple file upload test
 app.post('/api/upload', (req, res) => {
   upload(req, res, function (err) {
     if (err instanceof multer.MulterError) {
@@ -206,17 +209,26 @@ app.post('/api/upload', (req, res) => {
     }
     const image = req.files['image'] ? req.files['image'][0].filename : null;
     const video = req.files['video'] ? req.files['video'][0].filename : null;
-    const document = req.files['document'] ? req.files['document'][0].filename : null;
 
-    console.log('Files received:', { image, video, document });
-    res.send({ image, video, document });
+    console.log('Files received:', { image, video });
+    res.send({ image, video });
   });
 });
 
-//! GET FILES (including PDFs and Word documents)
-app.get('/api/files/:filename', (req, res) => {
-  const filePath = path.join(__dirname, 'uploads', req.params.filename);
-  res.sendFile(filePath);
+//! GET MESSAGES FOR A SPECIFIC USER
+app.get('/api/messages/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+
+    const messages = await Message.find({
+      $or: [{ senderId: userId }, { receiverId: userId }]
+    }).sort({ timestamp: 1 });
+
+    res.send(messages);
+  } catch (error) {
+    console.error('Failed to fetch messages:', error);
+    res.status(500).send({ error: 'Failed to fetch messages' });
+  }
 });
 
 //! DELETE MESSAGES BETWEEN TWO USERS
@@ -238,7 +250,7 @@ app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
   }
 });
 
-//! Cron job to delete messages older than 7 days
+//! Cron job to delete messages older than 2 minutes
 cron.schedule('0 0 * * *', async () => {
   try {
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
@@ -252,6 +264,7 @@ cron.schedule('0 0 * * *', async () => {
     console.error('Failed to delete old messages:', error);
   }
 });
+
 
 //! Socket.io connection
 io.on('connection', (socket) => {
