@@ -6,8 +6,11 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const cron = require('node-cron'); // node-cron kütüphanesini içe aktar
-
+const cron = require('node-cron'); 
+require('dotenv').config();
+const MONGODB = process.env.MONGODB
+const ADMINID=process.env.ADMINID
+console.log(MONGODB);
 // Setup express
 const app = express();
 const server = http.createServer(app);
@@ -60,7 +63,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
-mongoose.connect('mongodb+srv://umut:uRC30OOzc2ByVWdC@cluster0.9fozigf.mongodb.net/defi', {
+mongoose.connect(`${MONGODB}`, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
@@ -195,7 +198,7 @@ app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
   }
 });
 
-// Simple file upload test
+//! Simple file upload test
 app.post('/api/upload', (req, res) => {
   upload(req, res, function (err) {
     if (err instanceof multer.MulterError) {
@@ -248,14 +251,13 @@ app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
 });
 
 //! Cron job to delete messages for a specific user weekly
-cron.schedule('*/5 * * * *', async () => { // Runs every Sunday at midnight
+cron.schedule('*/8 * * * *', async () => { // Runs every Sunday at midnight
   try {
-    const adminId = '66a184d33eb2dc69832f7ca8'; 
 
     await Message.deleteMany({
       $or: [
-        { senderId: userId, receiverId: adminId },
-        { senderId: adminId, receiverId: userId }
+        { senderId: userId, receiverId: ADMINID },
+        { senderId: ADMINID, receiverId: userId }
       ]
     });
 
