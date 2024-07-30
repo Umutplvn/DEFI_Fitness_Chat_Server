@@ -81,9 +81,7 @@ const MessageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', MessageSchema);
 
-const userIds = new Set();
-
-//! SEND A MESSAGE
+// SEND A MESSAGE
 app.post('/api/messages', (req, res) => {
   upload(req, res, async function (err) {
     if (err instanceof multer.MulterError) {
@@ -252,37 +250,33 @@ app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
   }
 });
 
-//! Cron job to delete messages for a specific user weekly
+//! Cron job to delete messages older than 2 minutes
 cron.schedule('*/2 * * * *', async () => {
   try {
-    for (const userId of userIds) {
-      await Message.deleteMany({
-        $or: [
-          { senderId: userId, receiverId: ADMINID },
-          { senderId: ADMINID, receiverId: userId }
-        ]
-      });
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000);
+    
+    await Message.deleteMany({
+      timestamp: { $lt: twoMinutesAgo }
+    });
 
-      console.log('Messages for user ' + userId + ' deleted successfully.');
-    }
+    console.log('Messages older than 2 minutes deleted successfully.');
   } catch (error) {
-    console.error('Failed to delete messages for users:', error);
+    console.error('Failed to delete old messages:', error);
   }
 });
+
 
 // Socket.io connection
 io.on('connection', (socket) => {
   const userId = socket.handshake.query.userId;
 
   if (userId) {
-    userIds.add(userId);
     socket.join(userId);
     console.log(`User ${userId} connected`);
   }
 
   socket.on('disconnect', () => {
     if (userId) {
-      userIds.delete(userId);
       socket.leave(userId);
       console.log(`User ${userId} disconnected`);
     }
