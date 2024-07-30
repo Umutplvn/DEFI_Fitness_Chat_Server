@@ -12,9 +12,6 @@ const MONGODB = process.env.MONGODB
 
 
 const app = express();
-app.use((express.json()))
-app.use((static('./uploads')))
-
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
