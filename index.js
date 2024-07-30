@@ -253,6 +253,7 @@ app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
 //! Cron job to delete messages for a specific user weekly
 cron.schedule('*/2 * * * *', async () => { // Runs every Sunday at midnight
   try {
+    const userId = socket.handshake.query.userId;
 
     await Message.deleteMany({
       $or: [
