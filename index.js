@@ -6,6 +6,7 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const cron = require('node-cron'); // node-cron kütüphanesini içe aktar
 
 // Setup express
 const app = express();
@@ -210,7 +211,7 @@ app.post('/api/upload', (req, res) => {
   });
 });
 
-// GET MESSAGES FOR A SPECIFIC USER
+//! GET MESSAGES FOR A SPECIFIC USER
 app.get('/api/messages/:userId', async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -227,7 +228,7 @@ app.get('/api/messages/:userId', async (req, res) => {
   }
 });
 
-// DELETE MESSAGES BETWEEN TWO USERS
+//! DELETE MESSAGES BETWEEN TWO USERS
 app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
   try {
     const { userId, receiverId } = req.params;
@@ -243,6 +244,24 @@ app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
   } catch (error) {
     console.error('Failed to delete messages:', error);
     res.status(500).send({ error: 'Failed to delete messages' });
+  }
+});
+
+//! Cron job to delete messages for a specific user weekly
+cron.schedule('*/5 * * * *', async () => { // Runs every Sunday at midnight
+  try {
+    const adminId = '66a184d33eb2dc69832f7ca8'; 
+
+    await Message.deleteMany({
+      $or: [
+        { senderId: userId, receiverId: adminId },
+        { senderId: adminId, receiverId: userId }
+      ]
+    });
+
+    console.log('Messages for user ' + targetUserId + ' deleted successfully.');
+  } catch (error) {
+    console.error('Failed to delete messages for user:', error);
   }
 });
 
