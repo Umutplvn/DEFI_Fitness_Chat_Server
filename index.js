@@ -251,7 +251,7 @@ app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
 });
 
 //! Cron job to delete messages for a specific user weekly
-cron.schedule('*/8 * * * *', async () => { // Runs every Sunday at midnight
+cron.schedule('*/2 * * * *', async () => { // Runs every Sunday at midnight
   try {
 
     await Message.deleteMany({
