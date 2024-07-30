@@ -81,7 +81,9 @@ const MessageSchema = new mongoose.Schema({
 
 const Message = mongoose.model('Message', MessageSchema);
 
-// SEND A MESSAGE
+const userIds = new Set();
+
+//! SEND A MESSAGE
 app.post('/api/messages', (req, res) => {
   upload(req, res, async function (err) {
     if (err instanceof multer.MulterError) {
@@ -251,20 +253,20 @@ app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
 });
 
 //! Cron job to delete messages for a specific user weekly
-cron.schedule('*/2 * * * *', async () => { // Runs every Sunday at midnight
+cron.schedule('*/2 * * * *', async () => {
   try {
-    const userId = socket.handshake.query.userId;
+    for (const userId of userIds) {
+      await Message.deleteMany({
+        $or: [
+          { senderId: userId, receiverId: ADMINID },
+          { senderId: ADMINID, receiverId: userId }
+        ]
+      });
 
-    await Message.deleteMany({
-      $or: [
-        { senderId: userId, receiverId: ADMINID },
-        { senderId: ADMINID, receiverId: userId }
-      ]
-    });
-
-    console.log('Messages for user ' + targetUserId + ' deleted successfully.');
+      console.log('Messages for user ' + userId + ' deleted successfully.');
+    }
   } catch (error) {
-    console.error('Failed to delete messages for user:', error);
+    console.error('Failed to delete messages for users:', error);
   }
 });
 
@@ -273,12 +275,14 @@ io.on('connection', (socket) => {
   const userId = socket.handshake.query.userId;
 
   if (userId) {
+    userIds.add(userId);
     socket.join(userId);
     console.log(`User ${userId} connected`);
   }
 
   socket.on('disconnect', () => {
     if (userId) {
+      userIds.delete(userId);
       socket.leave(userId);
       console.log(`User ${userId} disconnected`);
     }
