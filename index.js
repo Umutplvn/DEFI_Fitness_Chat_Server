@@ -16,7 +16,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: 'http://localhost:3000',
+    origin: 'http://localhost:3001',
     methods: ['GET', 'POST', 'PUT', 'DELETE']
   }
 });
@@ -56,7 +56,7 @@ const upload = multer({
 }).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
 
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'http://localhost:3001',
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 }));
 app.use(express.json());
@@ -285,6 +285,6 @@ io.on('connection', (socket) => {
 });
 
 // Start server
-server.listen(3000, () => {
-  console.log('Server is running on port 3000');
+server.listen(3001, () => {
+  console.log('Server is running on port 3001');
 });
