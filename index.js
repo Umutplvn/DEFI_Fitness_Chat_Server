@@ -76,7 +76,7 @@ const MessageSchema = new mongoose.Schema({
   message: String,
   image: String,
   video: String,
-  path: String,
+  file: String,
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false }
 });
