@@ -85,19 +85,23 @@ const Message = mongoose.model('Message', MessageSchema);
 
 //! DOCUMENT
 app.post('/uploaddoc', (req, res) => {
-  upload(req, res, (err) => {
+  upload(req, res, async function (err) {
     if (err) {
       return res.status(400).send(err);
     }
 
-    const file = new Message({
-      path: req.file.path
-    });
+    const { senderId, receiverId } = req.body;
+    const file = req.files['file'] ? req.files['file'][0].filename : null;
+    
+    const newMessage = new Message({ senderId, receiverId, file });
+    await newMessage.save();
 
-    file.save()
-      .then(savedFile => res.status(201).json(savedFile))
-      .catch(err => res.status(500).send(err.message));
+    io.to(receiverId).emit('message', newMessage);
+    io.to(senderId).emit('message', newMessage);
+
+    res.send(newMessage);
   });
+  
 });
 
 app.get('/files', (req, res) => {
