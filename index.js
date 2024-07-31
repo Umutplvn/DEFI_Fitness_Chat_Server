@@ -255,20 +255,20 @@ app.post('/api/upload', (req, res) => {
 });
 
 // //! GET MESSAGES FOR A SPECIFIC USER
-// app.get('/api/messages/:userId', async (req, res) => {
-//   try {
-//     const userId = req.params.userId;
+app.get('/api/messages/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
 
-//     const messages = await Message.find({
-//       $or: [{ senderId: userId }, { receiverId: userId }]
-//     }).sort({ timestamp: 1 });
+    const messages = await Message.find({
+      $or: [{ senderId: userId }, { receiverId: userId }]
+    }).sort({ timestamp: 1 });
 
-//     res.send(messages);
-//   } catch (error) {
-//     console.error('Failed to fetch messages:', error);
-//     res.status(500).send({ error: 'Failed to fetch messages' });
-//   }
-// });
+    res.send(messages);
+  } catch (error) {
+    console.error('Failed to fetch messages:', error);
+    res.status(500).send({ error: 'Failed to fetch messages' });
+  }
+});
 
 //! DELETE MESSAGES BETWEEN TWO USERS
 app.delete('/api/messages/:userId/:receiverId', async (req, res) => {
