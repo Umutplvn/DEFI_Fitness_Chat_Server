@@ -43,17 +43,17 @@ const upload = multer({
     fileSize: 1024 * 1024 * 50
   },
   fileFilter: (req, file, cb) => {
-    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv/;
+    const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv|pdf|doc|docx/;
     const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = fileTypes.test(file.mimetype);
 
     if (extname && mimetype) {
       return cb(null, true);
     } else {
-      cb('Error: Images and Videos Only!');
+      cb('Error: Images, Videos and Documents Only!');
     }
   }
-}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }]);
+}).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }, { name: 'file', maxCount: 1 }]);
 
 //! CORS
 app.use(cors({
@@ -76,11 +76,47 @@ const MessageSchema = new mongoose.Schema({
   message: String,
   image: String,
   video: String,
+  path: String,
   timestamp: { type: Date, default: Date.now },
   read: { type: Boolean, default: false }
 });
 
 const Message = mongoose.model('Message', MessageSchema);
+
+//! DOCUMENT
+app.post('/uploaddoc', (req, res) => {
+  upload(req, res, (err) => {
+    if (err) {
+      return res.status(400).send(err);
+    }
+
+    const file = new Message({
+      path: req.file.path
+    });
+
+    file.save()
+      .then(savedFile => res.status(201).json(savedFile))
+      .catch(err => res.status(500).send(err.message));
+  });
+});
+
+app.get('/files', (req, res) => {
+  Message.find()
+    .then(files => res.json(files))
+    .catch(err => res.status(500).send(err.message));
+});
+
+app.get('/downloadfile/:id', (req, res) => {
+  Message.findById(req.params.id)
+    .then(file => {
+      if (file) {
+        res.download(file.path);
+      } else {
+        res.status(404).send('File not found');
+      }
+    })
+    .catch(err => res.status(500).send(err.message));
+});
 
 
 
