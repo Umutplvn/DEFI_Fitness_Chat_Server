@@ -15,7 +15,7 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
   cors: {
-    origin: 'http://localhost:3000',
+    origin: 'https://defifitness.netlify.app/',
     methods: ['GET', 'POST', 'PUT', 'DELETE']
   }
 });
@@ -57,7 +57,7 @@ const upload = multer({
 
 //! CORS
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'https://defifitness.netlify.app/',
   methods: ['GET', 'POST', 'PUT', 'DELETE']
 }));
 app.use(express.json());
@@ -237,7 +237,6 @@ app.get('/api/chats/:userId/:otherUserId', async (req, res) => {
     res.status(500).send({ error: 'Failed to fetch chats' });
   }
 });
-
 
 //! Simple file upload test
 app.post('/api/upload', (req, res) => {
