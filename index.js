@@ -10,7 +10,6 @@ const cron = require('node-cron');
 require('dotenv').config();
 const MONGODB = process.env.MONGODB
 
-
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -46,7 +45,6 @@ const upload = multer({
     const fileTypes = /jpeg|jpg|png|gif|mp4|avi|mkv|pdf|doc|docx/;
     const extname = fileTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = fileTypes.test(file.mimetype);
-
     if (extname && mimetype) {
       return cb(null, true);
     } else {
@@ -54,6 +52,7 @@ const upload = multer({
     }
   }
 }).fields([{ name: 'image', maxCount: 1 }, { name: 'video', maxCount: 1 }, { name: 'file', maxCount: 1 }]);
+
 
 //! CORS
 app.use(cors({
@@ -68,6 +67,7 @@ mongoose.connect(`${MONGODB}`, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });
+
 
 //! Message schema
 const MessageSchema = new mongoose.Schema({
